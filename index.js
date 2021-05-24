@@ -91,7 +91,7 @@ const myBucket = storage.bucket('test_bucket_prequel');
 const file = myBucket.file('test_replica/testFile.json');
 //const ws = file.createWriteStream();
 
-const bucket = 'gs://test_bucket_prequel/test_replica'
+//const bucket = 'gs://test_bucket_prequel/test_replica'
 
 async function extract() {
   const collectionReference = firestore.collection('testCollection');
