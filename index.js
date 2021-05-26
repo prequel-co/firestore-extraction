@@ -22,8 +22,14 @@ const bucket = storage.bucket('test_bucket_prequel');
 const file = bucket.file('test_file.json');
 const writestream = file.createWriteStream();
 
+const batchSize = 1000;
+
+console.log("generic");
+
 // Extract function
 async function extract(event, context, callback) {
+  console.log("hmm weird...");
+
   // const collectionList = firestore.listCollections();
   // collectionList.forEach((col, index) => {
   //   console.log(col)
@@ -54,4 +60,68 @@ async function extract(event, context, callback) {
   callback(null, 'Success!');
 }
 
-exports.firestoreExtract = (e, context, callback) => extract(e, context, callback);
+
+const writeBatch = async (collectionQ, batchStart) => {
+  console.log("writing batch");
+
+  //console.log(`Waiting: ${milliseconds / 1000} seconds.`);
+  return new Promise((resolve) => {
+    //console.log("cq", collectionQ);
+    const collectionDocuments = collectionQ.limit(batchSize).offset(batchStart).get();
+    //console.log("cd", collectionDocuments);
+    if (collectionDocuments && collectionDocuments.length > 0) {
+      collectionDocuments.forEach(documentSnapshot => {
+        writestream.write(JSON.stringify(doc, null, 2));
+      })
+      resolve(batchStart)
+    } else {
+      resolve(undefined)
+    }
+  })
+}
+
+const writeNextBatch = async (collectionQ, batchStart) => {
+  console.log("writing next batch");
+  await writeBatch(collectionQ, batchStart).then(lastBatchStart => {
+    if( lastBatchStart ) {
+      writeNextBatch( lastBatchStart + 1000 )
+    }
+  })
+
+
+}
+
+async function extractByBatch(event, context, callback) {
+
+  const collectionQuery = firestore.collection('testCollectionImport');
+
+  let count = 0;
+
+  writestream.write('[');
+  console.log("TESTING data DUMP");
+
+  await writeNextBatch(collectionQuery, 0);
+
+  // collectionQuery.limit(batchSize).get().then(querySnapshot => {
+  //   querySnapshot.forEach(documentSnapshot => {
+  //     writestream.write(JSON.stringify(doc, null, 2));
+  //   })
+  // })
+  //
+  // collectionQuery.stream().on('data', (doc) => {
+  //   //console.log(`Found document with name '${doc.id}'`);
+  //     if (count > 0) writestream.write(',');
+  //     writestream.write(JSON.stringify(doc, null, 2));
+  //     ++count;
+  //
+  // }).on('end', () => {
+  //   if ((count % 1000) === 0) console.log(`Total count is ${count}`);
+  // });
+
+  writestream.write(']');
+  writestream.end();
+
+  callback(null, 'Success!');
+}
+
+exports.firestoreExtract = (e, context, callback) => extractByBatch(e, context, callback);
