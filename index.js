@@ -23,6 +23,7 @@ const file = bucket.file('test_file.json');
 const writestream = file.createWriteStream();
 
 const batchSize = 1000;
+const maxSize = 10000;
 
 console.log("generic");
 
@@ -82,12 +83,14 @@ const writeBatch = async (collectionQ, batchStart) => {
 
 const writeNextBatch = async (collectionQ, batchStart) => {
   console.log("writing next batch");
-  await writeBatch(collectionQ, batchStart).then(lastBatchStart => {
-    if( lastBatchStart ) {
-      writeNextBatch( lastBatchStart + 1000 )
-    }
+  return new Promise((resolve) => {
+    writeBatch(collectionQ, batchStart).then(lastBatchStart => {
+      if( lastBatchStart ) {
+        writeNextBatch( lastBatchStart + 1000 )
+      }
+      resolve()
+    })
   })
-
 
 }
 
@@ -100,7 +103,15 @@ async function extractByBatch(event, context, callback) {
   writestream.write('[');
   console.log("TESTING data DUMP");
 
-  await writeNextBatch(collectionQuery, 0);
+  //await writeNextBatch(collectionQuery, 0);
+
+  for (i = 0; i < maxSize; i + batchSize) {
+    await collectionQuery.limit(batchSize).offset(i).get().then(querySnapshot =>
+      querySnapshot.forEach(documentSnapshot => {
+        writestream.write(JSON.stringify(documentSnapshot, null, 2));
+      })
+    )
+  }
 
   // collectionQuery.limit(batchSize).get().then(querySnapshot => {
   //   querySnapshot.forEach(documentSnapshot => {
