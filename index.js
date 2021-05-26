@@ -28,15 +28,26 @@ async function extract(event, context, callback) {
   // collectionList.forEach((col, index) => {
   //   console.log(col)
   // })
-  const collectionReference = firestore.collection('testCollection');
-  const testDocuments = await collectionReference.get();
-  const testDocumentData = testDocuments.docs.map(d => d.data());
+  // const collectionReference = firestore.collection('testCollectionImport');
+  // const testDocuments = await collectionReference.get();
+  // const testDocumentData = testDocuments.docs.map(d => d.data());
+
+  const collectionQuery = firestore.collection('testCollectionImport');
+
+  let count = 0;
 
   writestream.write('[');
-  testDocumentData.forEach((doc, index) => {
-    if (index > 0) writestream.write(',');
-    writestream.write(JSON.stringify(doc, null, 2));
+
+  collectionQuery.stream().on('data', (doc) => {
+    //console.log(`Found document with name '${doc.id}'`);
+      if (count > 0) writestream.write(',');
+      writestream.write(JSON.stringify(doc, null, 2));
+      ++count;
+
+  }).on('end', () => {
+    if ((count % 1000) === 0) console.log(`Total count is ${count}`);
   });
+
   writestream.write(']');
   writestream.end();
 
