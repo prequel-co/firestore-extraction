@@ -22,10 +22,8 @@ const bucket = storage.bucket('test_bucket_prequel');
 const file = bucket.file('test_file.json');
 const writestream = file.createWriteStream();
 
-const batchSize = 1000;
-const maxSize = 10000;
-
-console.log("generic");
+const batchSize = 10000;
+const maxSize = 100000;
 
 // Extract function
 async function extract(event, context, callback) {
@@ -104,13 +102,20 @@ async function extractByBatch(event, context, callback) {
   console.log("TESTING data DUMP");
 
   //await writeNextBatch(collectionQuery, 0);
-
-  for (i = 0; i < maxSize; i + batchSize) {
-    await collectionQuery.limit(batchSize).offset(i).get().then(querySnapshot =>
-      querySnapshot.forEach(documentSnapshot => {
-        writestream.write(JSON.stringify(documentSnapshot, null, 2));
+  let i;
+  for (i = 0; i < maxSize; i = i + batchSize) {
+    console.log("loop:", i);
+    if ( i !== 0 ) writestream.write(',');
+    const start = Date.now();
+    const collectionDocuments = await collectionQuery.limit(batchSize).offset(i).get();
+    const checkpointOne = Date.now();
+    console.log("loading time: ", checkpointOne - start);
+    collectionDocuments.forEach(documentSnapshot => {
+        writestream.write(JSON.stringify(documentSnapshot.data(), null, 2));
       })
     )
+    const checkpointTwo = Date.now();
+    console.log("writing time: ", checkpointTwo - checkpointOne);
   }
 
   // collectionQuery.limit(batchSize).get().then(querySnapshot => {
