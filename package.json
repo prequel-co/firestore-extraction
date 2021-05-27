@@ -4,7 +4,8 @@
   "description": "Package to handle extraction of data from Firestore and conversion to JSON format",
   "main": "lib/index.js",
   "scripts": {
-    "build": "npm run lint & tsc",
+    "lint": "eslint --ext .js,.ts .",
+    "build": "tsc",
     "test": "npm run local"
   },
   "author": "",
