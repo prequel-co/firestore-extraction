@@ -21,60 +21,115 @@ const storage = new Storage();
 const pubsub = new PubSub();
 
 
-
-let batchSize = 1000;
-let batchNumber = 0;
-let offset = 0;
-const maxSize = 1000000; // Arbitrary limit to prevent accidental overrun
-const maxTime = 480000; // In milliseconds
-
 // Publish function to kick off a new cloud function if approaching timeout
 const publish = async ( req: { topic: { name:string }, attributes?:Attributes }) : Promise<string | void> => {
   if (!req.topic?.name || !req.attributes) {
-    return Promise.reject(new Error('Missing data'));
+    return Promise.reject(new Error('Missing data'))
   }
 
-  console.log(`Publishing message to topic ${req.topic.name}`);
+  console.log(`Publishing message to topic ${req.topic.name}`)
 
   // References an existing topic
-  const topic = pubsub.topic(req.topic.name);
+  const topic = pubsub.topic(req.topic.name)
 
   const messageObject = {
     data: {
       message: 'Recursive topic publish from script',
     },
   };
-  const messageBuffer = Buffer.from(JSON.stringify(messageObject), 'utf8');
+  const messageBuffer = Buffer.from(JSON.stringify(messageObject), 'utf8')
 
   // Publishes a message
   try {
-    await topic.publish(messageBuffer, req.attributes);
-    return Promise.resolve('Message published');
+    await topic.publish(messageBuffer, req.attributes)
+    return Promise.resolve('Message published')
 
   } catch (err) {
-    console.error(err);
-    return Promise.reject(err);
+    console.error(err)
+    return Promise.reject(err)
   }
 };
+
+
+ interface CustomAttributes {
+   collectionName: string,
+   bucketName: string,
+   batchSize?: string, // Optional, defaults to 1000
+   maxDepth?: string, // Optional, defaults to 100
+   maxTime?: string, // Optional, defaults to 540 sec
+   maxSize?: string, // Optional, defaults to 1m
+   batchNumber?: string, // Ignore, only used in recursion
+   depth?: string, // Ignore, only used in recursion
+   offset?: string, // Ignore, only used in recursion
+ }
+
+
+ // Set defaults
+ let batchSize = 1000
+ const maxDepth = 100
+ const maxTime = 480000 // In milliseconds
+ const maxSize = 1000000 // Arbitrary limit to prevent accidental overrun
+ let batchNumber = 0
+ let depth = 0
+ let offset = 0
+
+
 
 const extractByBatch = async (e: any, context: any, callback: any) => {
   // Start timer and start batching when near max runtime
   const startTime = Date.now()
 
-  if ( e.attributes?.batchSize ) batchSize = parseInt( e.attributes.batchSize )
-  if ( e.attributes?.batchNumber ) batchNumber = parseInt( e.attributes.batchNumber )
-  console.log(batchNumber)
-  if ( e.attributes?.offset ) offset = parseInt( e.attributes.offset )
+  const attributes : CustomAttributes = e.context.attributes
+  if ( !attributes || !attributes.collectionName || !attributes.bucketName ){
+    const err = new Error("Missing required attributes (collectionName, bucketName)")
+    console.error(err)
+    callback(err)
+    return
+  }
 
-  let bucketName = 'test_bucket_prequel'
-  if ( e.attributes?.bucketName ) bucketName = e.attributes.bucketName
+  if ( attributes.depth ) depth = parseInt(attributes.depth)
+  if ( depth > maxDepth ) {
+    const err = new Error("Max depth exceeded")
+    console.error(err)
+    callback(err)
+    return
+  }
 
-  let fileName = 'test_file'
-  if ( e.attributes?.fileName ) fileName = e.attributes.fileName
+  //let collectionName = 'testCollectionImport'
+  const collectionNameRaw = attributes.collectionName
+  const collectionNameArray = collectionNameRaw.split(",")
+  if ( collectionNameArray && collectionNameArray.length > 1 ){
+    for ( let collection in collectionNameArray ){
+      try {
+        await publish({
+          topic: {name: context.resource.name},
+          attributes: {
+            ...(e.attributes),
+            fileName: collection,
+            collectionName: collection,
+            depth: String(depth + 1)
+          }
+        })
+      } catch (err) {
+        console.error(err)
+        callback(err)
+        return
+      }
+    }
+    console.log('Array of collections found')
+    callback(null, 'Array of collectons found')
+    return
+  }
+  const collectionName = collectionNameArray[0]
 
-  let collectionName = 'testCollectionImport'
-  if ( e.attributes?.collectionName ) collectionName = e.attributes.collectionName
+  const bucketName = attributes.bucketName
 
+
+  if ( attributes.batchSize ) batchSize = parseInt( attributes.batchSize )
+  if ( attributes.batchNumber ) batchNumber = parseInt( attributes.batchNumber )
+  if ( attributes.offset ) offset = parseInt( e.attributes.offset )
+
+  const fileName = collectionName
   let numberedFileName = fileName;
   if ( batchNumber ) numberedFileName = fileName + "_" + batchNumber
 
@@ -118,7 +173,7 @@ const extractByBatch = async (e: any, context: any, callback: any) => {
     isFirstBatch = false
   }
 
-  // Wrap up manual JSON array 
+  // Wrap up manual JSON array
   writestream.write(']')
   writestream.end()
 
@@ -133,16 +188,18 @@ const extractByBatch = async (e: any, context: any, callback: any) => {
           offset: String(offset), // Pass on the starting offset
           bucketName: bucketName,
           fileName: fileName,
-          collectionName: collectionName
+          collectionName: collectionName,
+          depth: String(depth + 1)
         }
       })
     } catch (err) {
-      console.error(err);
-      callback(err);
+      console.error(err)
+      callback(err)
     }
   }
 
-  callback(null, 'Success!');
+  callback(null, 'Success!')
+  return
 }
 
 export const firestoreExtract = (e: any, context: any, callback: any) => extractByBatch(e, context, callback);
