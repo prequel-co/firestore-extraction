@@ -70,7 +70,11 @@ async function extractByBatch(e: any, context: any, callback: any) {
   console.log(typeof context)
   console.log(typeof callback)
 
-  if ( e.attributes?.test === 'true' ) callback(null, 'Entered recursion!');
+  if ( e.attributes?.test === 'true' ) {
+    console.log("entered recursion!")
+    callback(null, 'Entered recursion!');
+    return;
+  }
 
   if ( e.attributes?.batchSize ) batchSize = parseInt( e.attributes.batchSize )
   if ( e.attributes?.batchNumber ) batchNumber = parseInt( e.attributes.batchNumber )
