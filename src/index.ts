@@ -20,10 +20,7 @@ const firestore = new Firestore();
 const storage = new Storage();
 const pubsub = new PubSub();
 
-// Destination
-let bucket = storage.bucket('test_bucket_prequel');
-let file = bucket.file('test_file.json');
-const writestream = file.createWriteStream();
+
 
 let batchSize = 1000;
 let batchNumber = 0;
@@ -66,27 +63,36 @@ const publish = async (req:{topic:{name:string }, attributes?:Attributes}) : Pro
 async function extractByBatch(e: any, context: any, callback: any) {
   // Start timer and start batching when near max runtime
   const startTime = Date.now();
-  console.log(typeof e)
-  console.log(typeof context)
-  console.log(typeof callback)
-
-  if ( e.attributes?.test === 'true' ) {
-    console.log("entered recursion!")
-    callback(null, 'Entered recursion!');
-    return;
-  }
 
   if ( e.attributes?.batchSize ) batchSize = parseInt( e.attributes.batchSize )
   if ( e.attributes?.batchNumber ) batchNumber = parseInt( e.attributes.batchNumber )
   console.log(batchNumber)
   if ( e.attributes?.offset ) offset = parseInt( e.attributes.offset )
 
+  let bucketName = 'test_bucket_prequel';
+  if ( e.attributes?.bucketName ) bucketName = e.attributes.bucketName
 
-  const collectionQuery = firestore.collection('testCollectionImport');
+  let fileName = 'test_file';
+  if ( e.attributes?.fileName ) fileName = e.attributes.fileName
+
+  let collectionName = 'testCollectionImport';
+  if ( e.attributes?.collectionName ) collectionName = e.attributes.collectionName
+
+  let numberedFileName = fileName;
+  if ( batchNumber ) numberedFileName = fileName + "_" + batchNumber
+
+  // Destination
+  let bucket = storage.bucket(bucketName);
+  let file = bucket.file(numberedFileName + '.json');
+  const writestream = file.createWriteStream();
+
+
+  const collectionQuery = firestore.collection(collectionName);
 
   writestream.write('[');
 
-  let complete = true;
+  let isFirstBatch = true;
+  let isComplete = true;
   let i;
   for (i = offset; i < maxSize; i = i + batchSize) {
     console.log("loop:", i);
@@ -95,28 +101,37 @@ async function extractByBatch(e: any, context: any, callback: any) {
     if ( !collectionDocuments || collectionDocuments.size === 0 ) { break; }
     //const checkpointOne = Date.now();
     //console.log("loading time: ", checkpointOne - start);
-    collectionDocuments.forEach(documentSnapshot => {
-      writestream.write(JSON.stringify(documentSnapshot.data(), null, 2));
+    // collectionDocuments.forEach(documentSnapshot => {
+    //   writestream.write(JSON.stringify(documentSnapshot.data(), null, 2));
+    // })
+    collectionDocuments.docs.forEach((doc, index) => {
+      if (index !== 0 || !isFirstBatch) writestream.write(',');
+      writestream.write(JSON.stringify(doc.data(), null, 2));
     })
     offset = i;
     const runTime = Date.now() - startTime;
     //console.log("writing time: ", checkpointTwo - checkpointOne);
     if (runTime > maxTime) {
-      complete = false
-      break;
+      isComplete = false
+      break
     }
+    isFirstBatch = false
   }
 
   writestream.write(']');
   writestream.end();
 
-  if ( complete === false ) {
+  if ( !isComplete ) {
     console.log("Run new process, pick up at: ", offset)
     await publish({
       topic: {name: context.resource.name},
       attributes: {
-        batchNumber: '25',
-        test: 'true'
+        ...(batchSize ? { batchSize: String(batchSize) } : undefined),
+        batchNumber: String(batchNumber + 1),
+        offset: String(offset),
+        bucketName: bucketName,
+        fileName: fileName,
+        collectionName: collectionName
       }
     })
   }
