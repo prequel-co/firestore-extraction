@@ -9,16 +9,16 @@
  *                     More info: https://expressjs.com/en/api.html#res
  */
 
-const { Readable } = require("stream")
-const { Firestore } = require('@google-cloud/firestore');
-const { Storage } = require('@google-cloud/storage');
-const { PubSub } = require('@google-cloud/pubsub');
-
-
+//const { Readable } = require("stream")
+import { Firestore } from '@google-cloud/firestore'
+import { Storage } from '@google-cloud/storage'
+//const { PubSub } = require('@google-cloud/pubsub');
+//import { PubSub } from '@google-cloud/pubsub'
+//import { CloudFunctionsServiceClient } from '@google-cloud/functions'
 // Create a new client
 const firestore = new Firestore();
 const storage = new Storage();
-const pubsub = new PubSub();
+//const pubsub = new PubSub();
 
 // Destination
 let bucket = storage.bucket('test_bucket_prequel');
@@ -30,80 +30,51 @@ let batchNumber = 0;
 const maxSize = 20000;
 const maxTime = 30000; // In milliseconds
 
-// Extract function
-async function extract(event, context, callback) {
-  console.log("hmm weird...");
+//
+// const publish = async (req, res) => {
+//   if (!req.body.topic || !req.body.message) {
+//     res
+//       .status(400)
+//       .send(
+//         'Missing parameter(s); include "topic" and "message" properties in your request.'
+//       );
+//     return;
+//   }
+//
+//   console.log(`Publishing message to topic ${req.body.topic}`);
+//
+//   // References an existing topic
+//   const topic = pubsub.topic(req.body.topic);
+//
+//   const messageObject = {
+//     data: {
+//       message: req.body.message,
+//     },
+//   };
+//   const messageBuffer = Buffer.from(JSON.stringify(messageObject), 'utf8');
+//
+//   // Publishes a message
+//   try {
+//     await topic.publish(messageBuffer);
+//     res.status(200).send('Message published.');
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).send(err);
+//     return Promise.reject(err);
+//   }
+// };
 
-  // const collectionList = firestore.listCollections();
-  // collectionList.forEach((col, index) => {
-  //   console.log(col)
-  // })
-  // const collectionReference = firestore.collection('testCollectionImport');
-  // const testDocuments = await collectionReference.get();
-  // const testDocumentData = testDocuments.docs.map(d => d.data());
-
-  const collectionQuery = firestore.collection('testCollectionImport');
-
-  let count = 0;
-
-  writestream.write('[');
-
-  collectionQuery.stream().on('data', (doc) => {
-    //console.log(`Found document with name '${doc.id}'`);
-      if (count > 0) writestream.write(',');
-      writestream.write(JSON.stringify(doc, null, 2));
-      ++count;
-
-  }).on('end', () => {
-    if ((count % 1000) === 0) console.log(`Total count is ${count}`);
-  });
-
-  writestream.write(']');
-  writestream.end();
-
-  callback(null, 'Success!');
-}
-
-
-const publish = async (req, res) => {
-  if (!req.body.topic || !req.body.message) {
-    res
-      .status(400)
-      .send(
-        'Missing parameter(s); include "topic" and "message" properties in your request.'
-      );
-    return;
-  }
-
-  console.log(`Publishing message to topic ${req.body.topic}`);
-
-  // References an existing topic
-  const topic = pubsub.topic(req.body.topic);
-
-  const messageObject = {
-    data: {
-      message: req.body.message,
-    },
-  };
-  const messageBuffer = Buffer.from(JSON.stringify(messageObject), 'utf8');
-
-  // Publishes a message
-  try {
-    await topic.publish(messageBuffer);
-    res.status(200).send('Message published.');
-  } catch (err) {
-    console.error(err);
-    res.status(500).send(err);
-    return Promise.reject(err);
-  }
-};
-
-async function extractByBatch(e, context, callback) {
+async function extractByBatch(e: any, context: any, callback: any) {
   // Start timer and start batching when near max runtime
   const startTime = Date.now();
+  console.log(typeof e)
+  console.log(typeof context)
+  console.log(typeof callback)
+
 
   if ( !!e.attributes.batchSize ) batchSize = parseInt( e.attributes.batchSize )
   if ( !!e.attributes.batchNumber ) batchNumber = parseInt( e.attributes.batchNumber )
+  console.log(batchNumber)
   let offset = 0;
   if ( !!e.attributes.offset ) offset = parseInt( e.attributes.offset )
 
@@ -144,4 +115,4 @@ async function extractByBatch(e, context, callback) {
   callback(null, 'Success!');
 }
 
-exports.firestoreExtract = (e, context, callback) => extractByBatch(e, context, callback);
+export const firestoreExtract = (e: any, context: any, callback: any) => extractByBatch(e, context, callback);
