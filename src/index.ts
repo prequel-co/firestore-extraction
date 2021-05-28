@@ -12,13 +12,13 @@
 //const { Readable } = require("stream")
 import { Firestore } from '@google-cloud/firestore'
 import { Storage } from '@google-cloud/storage'
-//const { PubSub } = require('@google-cloud/pubsub');
-//import { PubSub } from '@google-cloud/pubsub'
-//import { CloudFunctionsServiceClient } from '@google-cloud/functions'
+//onst { PubSub } = require('@google-cloud/pubsub');
+import { PubSub, Attributes } from '@google-cloud/pubsub'
+//import {  } from '@google-cloud/functions'
 // Create a new client
 const firestore = new Firestore();
 const storage = new Storage();
-//const pubsub = new PubSub();
+const pubsub = new PubSub();
 
 // Destination
 let bucket = storage.bucket('test_bucket_prequel');
@@ -27,42 +27,41 @@ const writestream = file.createWriteStream();
 
 let batchSize = 1000;
 let batchNumber = 0;
+let offset = 0;
 const maxSize = 20000;
 const maxTime = 30000; // In milliseconds
 
 //
-// const publish = async (req, res) => {
-//   if (!req.body.topic || !req.body.message) {
-//     res
-//       .status(400)
-//       .send(
-//         'Missing parameter(s); include "topic" and "message" properties in your request.'
-//       );
-//     return;
-//   }
-//
-//   console.log(`Publishing message to topic ${req.body.topic}`);
-//
-//   // References an existing topic
-//   const topic = pubsub.topic(req.body.topic);
-//
-//   const messageObject = {
-//     data: {
-//       message: req.body.message,
-//     },
-//   };
-//   const messageBuffer = Buffer.from(JSON.stringify(messageObject), 'utf8');
-//
-//   // Publishes a message
-//   try {
-//     await topic.publish(messageBuffer);
-//     res.status(200).send('Message published.');
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).send(err);
-//     return Promise.reject(err);
-//   }
-// };
+const publish = async (req:{topic:{name:string }, attributes?:Attributes}) : Promise<string | void> => {
+  console.log(req)
+  if (!req.topic?.name || !req.attributes) {
+    return Promise.reject('Missing data');
+  }
+
+  console.log(`Publishing message to topic ${req.topic.name}`);
+
+  // References an existing topic
+  const topic = pubsub.topic(req.topic.name);
+
+  const messageObject = {
+    data: {
+      message: 'Recursive topic publish from script.',
+    },
+  };
+  const messageBuffer = Buffer.from(JSON.stringify(messageObject), 'utf8');
+
+  // Publishes a message
+  try {
+    await topic.publish(messageBuffer, req.attributes);
+    //res.status(200).send('Message published.');
+    return Promise.resolve('Message published');
+
+  } catch (err) {
+    console.error(err);
+    //res.status(500).send(err);
+    return Promise.reject(err);
+  }
+};
 
 async function extractByBatch(e: any, context: any, callback: any) {
   // Start timer and start batching when near max runtime
@@ -71,18 +70,17 @@ async function extractByBatch(e: any, context: any, callback: any) {
   console.log(typeof context)
   console.log(typeof callback)
 
+  if ( e.attributes?.test === 'true' ) callback(null, 'Entered recursion!');
 
-  if ( !!e.attributes.batchSize ) batchSize = parseInt( e.attributes.batchSize )
-  if ( !!e.attributes.batchNumber ) batchNumber = parseInt( e.attributes.batchNumber )
+  if ( e.attributes?.batchSize ) batchSize = parseInt( e.attributes.batchSize )
+  if ( e.attributes?.batchNumber ) batchNumber = parseInt( e.attributes.batchNumber )
   console.log(batchNumber)
-  let offset = 0;
-  if ( !!e.attributes.offset ) offset = parseInt( e.attributes.offset )
+  if ( e.attributes?.offset ) offset = parseInt( e.attributes.offset )
 
 
   const collectionQuery = firestore.collection('testCollectionImport');
 
   writestream.write('[');
-  console.log("TESTING data DUMP");
 
   let complete = true;
   let i;
@@ -110,6 +108,13 @@ async function extractByBatch(e: any, context: any, callback: any) {
 
   if ( complete === false ) {
     console.log("Run new process, pick up at: ", offset)
+    await publish({
+      topic: {name: context.resource.name},
+      attributes: {
+        batchNumber: '25',
+        test: 'true'
+      }
+    })
   }
 
   callback(null, 'Success!');
