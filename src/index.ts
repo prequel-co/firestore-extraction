@@ -79,7 +79,9 @@ const extractByBatch = async (e: any, context: any, callback: any) => {
   // Start timer and start batching when near max runtime
   const startTime = Date.now()
 
-  const attributes : CustomAttributes = e?.context?.attributes
+  console.log(e)
+
+  const attributes : CustomAttributes = e?.attributes
   if ( !attributes || !attributes.collectionName || !attributes.bucketName ){
     const err = new Error("Missing required attributes (collectionName, bucketName)")
     console.error(err)
