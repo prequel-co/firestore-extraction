@@ -25,14 +25,13 @@ const pubsub = new PubSub();
 let batchSize = 1000;
 let batchNumber = 0;
 let offset = 0;
-const maxSize = 20000;
-const maxTime = 30000; // In milliseconds
+const maxSize = 1000000; // Arbitrary limit to prevent accidental overrun
+const maxTime = 480000; // In milliseconds
 
-//
-const publish = async (req:{topic:{name:string }, attributes?:Attributes}) : Promise<string | void> => {
-  console.log(req)
+// Publish function to kick off a new cloud function if approaching timeout
+const publish = async ( req: { topic: { name:string }, attributes?:Attributes }) : Promise<string | void> => {
   if (!req.topic?.name || !req.attributes) {
-    return Promise.reject('Missing data');
+    return Promise.reject(new Error('Missing data'));
   }
 
   console.log(`Publishing message to topic ${req.topic.name}`);
@@ -42,7 +41,7 @@ const publish = async (req:{topic:{name:string }, attributes?:Attributes}) : Pro
 
   const messageObject = {
     data: {
-      message: 'Recursive topic publish from script.',
+      message: 'Recursive topic publish from script',
     },
   };
   const messageBuffer = Buffer.from(JSON.stringify(messageObject), 'utf8');
@@ -50,90 +49,97 @@ const publish = async (req:{topic:{name:string }, attributes?:Attributes}) : Pro
   // Publishes a message
   try {
     await topic.publish(messageBuffer, req.attributes);
-    //res.status(200).send('Message published.');
     return Promise.resolve('Message published');
 
   } catch (err) {
     console.error(err);
-    //res.status(500).send(err);
     return Promise.reject(err);
   }
 };
 
-async function extractByBatch(e: any, context: any, callback: any) {
+const extractByBatch = async (e: any, context: any, callback: any) => {
   // Start timer and start batching when near max runtime
-  const startTime = Date.now();
+  const startTime = Date.now()
 
   if ( e.attributes?.batchSize ) batchSize = parseInt( e.attributes.batchSize )
   if ( e.attributes?.batchNumber ) batchNumber = parseInt( e.attributes.batchNumber )
   console.log(batchNumber)
   if ( e.attributes?.offset ) offset = parseInt( e.attributes.offset )
 
-  let bucketName = 'test_bucket_prequel';
+  let bucketName = 'test_bucket_prequel'
   if ( e.attributes?.bucketName ) bucketName = e.attributes.bucketName
 
-  let fileName = 'test_file';
+  let fileName = 'test_file'
   if ( e.attributes?.fileName ) fileName = e.attributes.fileName
 
-  let collectionName = 'testCollectionImport';
+  let collectionName = 'testCollectionImport'
   if ( e.attributes?.collectionName ) collectionName = e.attributes.collectionName
 
   let numberedFileName = fileName;
   if ( batchNumber ) numberedFileName = fileName + "_" + batchNumber
 
   // Destination
-  let bucket = storage.bucket(bucketName);
-  let file = bucket.file(numberedFileName + '.json');
-  const writestream = file.createWriteStream();
+  let bucket = storage.bucket(bucketName)
+  let file = bucket.file(numberedFileName + '.json')
+  const writestream = file.createWriteStream()
 
 
-  const collectionQuery = firestore.collection(collectionName);
+  const collectionQuery = firestore.collection(collectionName)
 
-  writestream.write('[');
+  // Manually begin the JSON array
+  writestream.write('[')
 
-  let isFirstBatch = true;
-  let isComplete = true;
-  let i;
-  for (i = offset; i < maxSize; i = i + batchSize) {
-    console.log("loop:", i);
-    if ( i !== 0 ) writestream.write(',');
-    const collectionDocuments = await collectionQuery.limit(batchSize).offset(i).get();
-    if ( !collectionDocuments || collectionDocuments.size === 0 ) { break; }
-    //const checkpointOne = Date.now();
-    //console.log("loading time: ", checkpointOne - start);
-    // collectionDocuments.forEach(documentSnapshot => {
-    //   writestream.write(JSON.stringify(documentSnapshot.data(), null, 2));
-    // })
-    collectionDocuments.docs.forEach((doc, index) => {
-      if (index !== 0 || !isFirstBatch) writestream.write(',');
-      writestream.write(JSON.stringify(doc.data(), null, 2));
-    })
-    offset = i;
-    const runTime = Date.now() - startTime;
-    //console.log("writing time: ", checkpointTwo - checkpointOne);
+  let isFirstBatch = true
+  let isComplete = true // Start by assuming full db is read
+  for (let i = offset; i <= maxSize; i = i + batchSize) {
+
+    // Check current runtime
+    const runTime = Date.now() - startTime
+
+    // If the current runtime is over the alloted limit, stop processing
     if (runTime > maxTime) {
-      isComplete = false
+      offset = i // Record the latest offset
+      isComplete = false // If time is out, break out of loop and continue in new function
       break
     }
+
+    // Fetch the next batch of documents
+    const collectionDocuments = await collectionQuery.limit(batchSize).offset(i).get()
+
+    // If the batch of documents is empty or does not exist, leave the batch loop
+    if ( !collectionDocuments || collectionDocuments.size === 0 ) break
+
+    // Write each of the JSON objects to the output file
+    collectionDocuments.docs.forEach((doc, index) => {
+      if (index !== 0 || !isFirstBatch) writestream.write(',') // Manually comma separate objects
+      writestream.write(JSON.stringify(doc.data(), null, 2))
+    })
+
     isFirstBatch = false
   }
 
-  writestream.write(']');
-  writestream.end();
+  // Wrap up manual JSON array 
+  writestream.write(']')
+  writestream.end()
 
+  // If the entire set of documents did not complete, recursively start a new function
   if ( !isComplete ) {
-    console.log("Run new process, pick up at: ", offset)
-    await publish({
-      topic: {name: context.resource.name},
-      attributes: {
-        ...(batchSize ? { batchSize: String(batchSize) } : undefined),
-        batchNumber: String(batchNumber + 1),
-        offset: String(offset),
-        bucketName: bucketName,
-        fileName: fileName,
-        collectionName: collectionName
-      }
-    })
+    try {
+      await publish({
+        topic: {name: context.resource.name},
+        attributes: {
+          ...(batchSize ? { batchSize: String(batchSize) } : undefined),
+          batchNumber: String(batchNumber + 1), // Increment the batch counter
+          offset: String(offset), // Pass on the starting offset
+          bucketName: bucketName,
+          fileName: fileName,
+          collectionName: collectionName
+        }
+      })
+    } catch (err) {
+      console.error(err);
+      callback(err);
+    }
   }
 
   callback(null, 'Success!');
