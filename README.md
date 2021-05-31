@@ -20,8 +20,7 @@ There are two required attributes needed to run the cloud function
 
 ### Prerequisites
 
-1. Install gcloud
-2. Install gsutil
+1. [Install gcloud](https://cloud.google.com/sdk/docs/install)
 
 ### Build and Deploy Cloud Function
 
