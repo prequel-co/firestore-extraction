@@ -141,9 +141,6 @@ const extractByBatch = async (e: any, context: any, callback: any) => {
 
   let collectionQuery = firestore.collection(collectionName)
 
-
-  //const collectionQuery = firestore.collection(collectionName)
-
   // Manually begin the JSON array
   writestream.write('[')
 
