@@ -21,11 +21,11 @@ There are two required attributes needed to run the cloud function
 To set these variables once for the following instructions, use these env vars
 
 ```sh
-BUCKET_NAME="" 
-PROJECT_ID=""
+BUCKET_NAME="your_bucket_name" & :: do not include the leading 'gs:'
+PROJECT_ID="your_gcp_project_id"
 FUNCTION_NAME="firestoreExtract"
 TOPIC_NAME="initiateFirestoreExtract"
-COLLECTION_NAME=""
+COLLECTION_NAME="your_firestore_collection_name" & :: can include multiple if separated by spaces e.g. "collection_1 collection_2"
 
 ```
 
