@@ -52,17 +52,17 @@ git clone https://github.com/prequel-co/firestore-extraction.git
 3. Deploy the function 
 
   ```sh
-  gcloud functions deploy firestoreExtract \
+  gcloud functions deploy $FUNCTION_NAME \
       --runtime nodejs12 \
       --timeout 540 \
-      --trigger-topic initiateFirestoreExport 
+      --trigger-topic $TOPIC_NAME
   ```
   
 4. (Optional: Test the function)
   
   ```sh
-  gcloud pubsub topics publish initiateFirestoreExport \
-      --attribute=collectionName=testCollection,bucketName=test_bucket
+  gcloud pubsub topics publish $TOPIC_NAME \
+      --attribute=collectionName=$COLLECTION_NAME,bucketName=$BUCKET_NAME
   ```
   
 ### Schedule Cloud Function
@@ -70,8 +70,8 @@ git clone https://github.com/prequel-co/firestore-extraction.git
   ```sh
   gcloud scheduler jobs create pubsub myjob \
       --schedule "0 1 * * 0" \
-      --topic initiateFirestoreExport \
-      --attribute=collectionName=testCollection,bucketName=test_bucket
+      --topic $TOPIC_NAME \
+      --attribute=collectionName=$COLLECTION_NAME,bucketName=$BUCKET_NAME
   ```
 
 ### Grant Permissions
@@ -80,14 +80,14 @@ git clone https://github.com/prequel-co/firestore-extraction.git
 
 ```sh
  gcloud projects add-iam-policy-binding PROJECT_ID \
-    --member serviceAccount:PROJECT_ID@appspot.gserviceaccount.com \
+    --member serviceAccount:$PROJECT_ID@appspot.gserviceaccount.com \
     --role roles/datastore.importExportAdmin
 ```
 2. Assign the Storage Admin role on your bucket. Replace PROJECT_ID and BUCKET_NAME, and run the following command:
 
 ```sh
-gsutil iam ch serviceAccount:PROJECT_ID@appspot.gserviceaccount.com:admin \
-    gs://BUCKET_NAME
+gsutil iam ch serviceAccount:$PROJECT_ID@appspot.gserviceaccount.com:admin \
+    gs://$BUCKET_NAME
 ```
     
 
