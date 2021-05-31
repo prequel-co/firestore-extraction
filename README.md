@@ -1,6 +1,6 @@
 # Firestore Extraction Tool
 
-This Firestore Extraction Tool is a node module built to extract JSON data from a Firestore db and write it to .json files in a GCP bucket. This is useful for non-proprietary backups and other use cases in which non-proprietary or encoded data types are important. 
+This Firestore Extraction Tool is a node module built to extract JSON data from a Firestore db and write it to .json files in a GCP bucket. This is useful for non-proprietary filetype backups and other use cases in which non-proprietary or non-encoded data types are important. 
 
 ## How It Works
 
@@ -14,8 +14,9 @@ This Firestore Extraction Tool is a node module built to extract JSON data from 
 
 There are two required attributes needed to run the cloud function
 
-1. Bucket name
-2. Collection(s)
+1. Bucket name = "gs://SOME_BUCKET_NAME"
+2. Collection(s) = "collectionName collectionName2" (space delimited)
+3. GCP Project ID 
 
 ### Build and Deploy Cloud Function
 
