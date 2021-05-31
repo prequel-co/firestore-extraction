@@ -38,12 +38,13 @@ COLLECTION_NAME=""
 1. Clone this repo
 
 ```sh
-git clone 
+git clone https://github.com/prequel-co/firestore-extraction.git
 ```
  
-2. Install dependencies and compile the module:
+2. Navigate into the parent folder, install dependencies, and compile the module:
   
   ```sh
+  cd firestore-extraction
   npm install
   npm run build
   ```
