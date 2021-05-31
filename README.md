@@ -35,14 +35,20 @@ COLLECTION_NAME=""
 
 ### Build and Deploy Cloud Function
 
-1. Install dependencies and compile the module:
+1. Clone this repo
+
+```sh
+git clone 
+```
+ 
+2. Install dependencies and compile the module:
   
   ```sh
   npm install
   npm run build
   ```
   
-2. Deploy the function 
+3. Deploy the function 
 
   ```sh
   gcloud functions deploy firestoreExtract \
@@ -51,7 +57,7 @@ COLLECTION_NAME=""
       --trigger-topic initiateFirestoreExport 
   ```
   
-3. (Optional: Test the function)
+4. (Optional: Test the function)
   
   ```sh
   gcloud pubsub topics publish initiateFirestoreExport \
