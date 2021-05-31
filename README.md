@@ -77,7 +77,7 @@ git clone https://github.com/prequel-co/firestore-extraction.git
 
   ```sh
   gcloud scheduler jobs create pubsub myjob \
-      --schedule "0 1 * * 0" \
+      --schedule "0 2 * * *" \
       --topic $TOPIC_NAME \
       --attribute=collectionName=$COLLECTION_NAME,bucketName=$BUCKET_NAME
   ```
