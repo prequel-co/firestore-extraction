@@ -18,6 +18,11 @@ There are two required attributes needed to run the cloud function
 2. Collection(s) = "collectionName collectionName2" (space delimited)
 3. GCP Project ID 
 
+### Prerequisites
+
+1. Install gcloud
+2. Install gsutil
+
 ### Build and Deploy Cloud Function
 
 1. Install dependencies and compile the module:
