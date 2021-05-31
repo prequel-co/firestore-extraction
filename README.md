@@ -79,7 +79,7 @@ git clone https://github.com/prequel-co/firestore-extraction.git
 1. Assign the Cloud Datastore Import Export Admin role. Replace PROJECT_ID, and run the following command:
 
 ```sh
- gcloud projects add-iam-policy-binding PROJECT_ID \
+ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member serviceAccount:$PROJECT_ID@appspot.gserviceaccount.com \
     --role roles/datastore.importExportAdmin
 ```
