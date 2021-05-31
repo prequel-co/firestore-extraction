@@ -1,20 +1,7 @@
-//const escapeHtml = require('escape-html');
-
-/**
- * HTTP Cloud Function.
- *
- * @param {Object} req Cloud Function request context.
- *                     More info: https://expressjs.com/en/api.html#req
- * @param {Object} res Cloud Function response context.
- *                     More info: https://expressjs.com/en/api.html#res
- */
-
-//const { Readable } = require("stream")
 import { Firestore } from '@google-cloud/firestore'
 import { Storage } from '@google-cloud/storage'
-//onst { PubSub } = require('@google-cloud/pubsub');
 import { PubSub, Attributes } from '@google-cloud/pubsub'
-//import {  } from '@google-cloud/functions'
+
 // Create a new client
 const firestore = new Firestore();
 const storage = new Storage();
@@ -99,9 +86,9 @@ const extractByBatch = async (e: any, context: any, callback: any) => {
 
   //let collectionName = 'testCollectionImport'
   const collectionNameRaw = attributes.collectionName
-  const collectionNameArray = collectionNameRaw.split(",")
+  const collectionNameArray = collectionNameRaw.split(" ")
   if ( collectionNameArray && collectionNameArray.length > 1 ){
-    for ( let collection in collectionNameArray ){
+    for ( const collection of collectionNameArray ){
       try {
         await publish({
           topic: {name: context.resource.name},
@@ -138,10 +125,10 @@ const extractByBatch = async (e: any, context: any, callback: any) => {
   // Destination
   let bucket = storage.bucket(bucketName)
   let file = bucket.file(numberedFileName + '.json')
+
   const writestream = file.createWriteStream()
 
-
-  const collectionQuery = firestore.collection(collectionName)
+  let collectionQuery = firestore.collection(collectionName)
 
   // Manually begin the JSON array
   writestream.write('[')
@@ -168,7 +155,11 @@ const extractByBatch = async (e: any, context: any, callback: any) => {
 
     // Write each of the JSON objects to the output file
     collectionDocuments.docs.forEach((doc, index) => {
-      if (index !== 0 || !isFirstBatch) writestream.write(',') // Manually comma separate objects
+      if (index !== 0 || !isFirstBatch) {
+        writestream.write(',') // Manually comma separate objects
+      } else {
+        console.log(doc)
+      }
       writestream.write(JSON.stringify(doc.data(), null, 2))
     })
 
