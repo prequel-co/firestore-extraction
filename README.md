@@ -18,6 +18,17 @@ There are two required attributes needed to run the cloud function
 2. Collection(s) = "collectionName collectionName2" (space delimited)
 3. GCP Project ID 
 
+To set these variables once for the following instructions, use these env vars
+
+```sh
+BUCKET_NAME="" 
+PROJECT_ID=""
+FUNCTION_NAME="firestoreExtract"
+TOPIC_NAME="initiateFirestoreExtract"
+COLLECTION_NAME=""
+
+```
+
 ### Prerequisites
 
 1. [Install gcloud](https://cloud.google.com/sdk/docs/install)
