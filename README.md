@@ -12,20 +12,22 @@ This Firestore Extraction Tool is a node module built to extract JSON data from 
 
 ## Config 
 
-There are two required attributes needed to run the cloud function
+There are a few required parameters needed to configure the cloud function
 
-1. Bucket name = "gs://SOME_BUCKET_NAME"
-2. Collection(s) = "collectionName collectionName2" (space delimited)
+1. Bucket name = "gs://YOUR_BUCKET_NAME"
+2. Collection name(s) = "collectionName collectionName2" (space delimited)
 3. GCP Project ID 
+4. Function name = "firestoreExtract" (needs to match function exported in cloud function source)
+5. Topic name (can use your own name or the suggested name)
 
 To set these variables once for the following instructions, use these env vars
 
 ```sh
 BUCKET_NAME="your_bucket_name" 
+COLLECTION_NAME="your_firestore_collection_name" 
 PROJECT_ID="your_gcp_project_id"
 FUNCTION_NAME="firestoreExtract"
 TOPIC_NAME="initiateFirestoreExtract"
-COLLECTION_NAME="your_firestore_collection_name" 
 
 ```
 
