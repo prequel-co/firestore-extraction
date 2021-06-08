@@ -160,7 +160,7 @@ const extractByBatch = async (e: any, context: any, callback: any) => {
       } else {
         console.log(doc)
       }
-      writestream.write(JSON.stringify(doc.data(), null, 2))
+      writestream.write(JSON.stringify({id: doc.id, data: doc.data()}, null, 2))
     })
 
     isFirstBatch = false
