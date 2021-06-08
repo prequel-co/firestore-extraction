@@ -79,7 +79,8 @@ git clone https://github.com/prequel-co/firestore-extraction.git
   gcloud scheduler jobs create pubsub myjob \
       --schedule "0 2 * * *" \
       --topic $TOPIC_NAME \
-      --attribute=collectionName=$COLLECTION_NAME,bucketName=$BUCKET_NAME
+      --attributes collectionName=$COLLECTION_NAME,bucketName=$BUCKET_NAME \
+      --message-body "Kick off Firestore extraction."
   ```
 
 ### Grant Permissions
